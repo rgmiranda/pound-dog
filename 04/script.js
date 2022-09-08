@@ -24,15 +24,21 @@ class Explosion {
         this.y = y;
         this.image = new Image();
         this.image.src = 'boom.png';
+
         this.frame = 0;
         this.active = true;
         this.angle = Math.random() * Math.PI * 2;
         this.timer = 0;
+        this.sound = new Audio();
+        this.sound.src = 'boom.wav';
     }
 
     update() {
         if (!this.active) {
             return;
+        }
+        if (this.timer === 0) {
+            this.sound.play();
         }
         this.timer++;
         if (this.timer % 10 === 0) {
@@ -67,7 +73,7 @@ class Explosion {
 
 const explosions = [];
 
-window.addEventListener('mousemove', (ev) => {
+window.addEventListener('click', (ev) => {
     const px = ev.x - canvasPosition.left,
         py = ev.y - canvasPosition.top;
     explosions.push(new Explosion(px, py));
