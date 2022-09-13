@@ -16,14 +16,18 @@ const ravens = [];
 
 let canvasPosition = canvas.getBoundingClientRect();
 
+const bgImage = new Image();
+bgImage.src = 'background.png';
+
 class Raven {
     constructor() {
         
         /** @type {FlyingState | ExplodingState} */
         this.state = new FlyingState(this);
 
-        this.height = this.state.spriteHeight * 0.35;
-        this.width = this.state.spriteWidth * 0.35;
+        this.sizeModifier = Math.random() * 0.5 + 0.35;
+        this.height = this.state.spriteHeight * this.sizeModifier;
+        this.width = this.state.spriteWidth * this.sizeModifier;
         this.x = cvWidth;
         this.y = Math.random() * (cvHeight - this.height);
         this.active = true;
@@ -48,8 +52,8 @@ class Raven {
      */
     setState(state) {
         this.state = state;
-        this.height = this.state.spriteHeight * 0.35;
-        this.width = this.state.spriteWidth * 0.35;
+        this.height = this.state.spriteHeight * this.sizeModifier;
+        this.width = this.state.spriteWidth * this.sizeModifier;
     }
 }
 
@@ -80,6 +84,10 @@ class FlyingState {
 
     update(timestamp) {
 
+        if (this.raven.y < 0 || this.raven.y > cvHeight - this.raven.height) {
+            this.directionY *= -1;
+        }
+
         const delta = timestamp - this.spriteLastUpdate;
         if (delta > this.spriteFameInterval) {
             this.spriteFrame = (this.spriteFrame + 1) % this.spriteFrameCount;
@@ -89,7 +97,7 @@ class FlyingState {
         this.raven.x -= this.directionX;
         this.raven.y += this.directionY;
 
-        if (this.raven.x < -this.raven.width || this.raven.y < -this.raven.height || this.raven.y > cvHeight) {
+        if (this.raven.x < -this.raven.width) {
             this.raven.active = false;
         }
     }
@@ -124,6 +132,7 @@ class ExplodingState {
 
         this.image = new Image();
         this.image.src = 'boom.png';
+
     }
 
     update(timestamp) {
@@ -135,7 +144,7 @@ class ExplodingState {
         }
 
         if (this.spriteFrame >= this.spriteFrameCount) {
-            this.active = false;
+            this.raven.active = false;
         }
     }
 
@@ -152,18 +161,23 @@ class ExplodingState {
 document.addEventListener('click', ev => {
     const px = ev.x - canvasPosition.left,
         py = ev.y - canvasPosition.top;
-    ravens.forEach(r => {
+    for (let i = ravens.length - 1; i >= 0; i--) {
+        let r = ravens[i];
         if (!r.active) {
-            return;
+            continue;
         }
         if (px < r.x || px > r.x + r.width) {
-            return;
+            continue;
         }
         if (py < r.y || py > r.y + r.height) {
-            return;
+            continue;
+        }
+        if (r.state instanceof ExplodingState) {
+            continue;
         }
         r.setState(new ExplodingState(r));
-    });
+        return;
+    }
 });
 
 /**
@@ -173,9 +187,32 @@ document.addEventListener('click', ev => {
 function animate(timestamp) {
     ctx.clearRect(0, 0, cvWidth, cvHeight);
 
+    ctx.drawImage(bgImage, 0, 0, cvWidth, cvHeight, 0, 0, cvWidth, cvHeight)
+
     let deltaTime = timestamp - lastTime;
     if (deltaTime > ravenInterval) {
-        ravens.push(new Raven());
+        const newRaven = new Raven();
+        if (ravens.length === 0) {
+            ravens.push(newRaven);
+        } else {
+            let i, j, k;
+            i = 0;
+            k = ravens.length - 1;
+            j = Math.floor((k + i) / 2);
+            while (i < k) {
+                if (ravens[j].width < newRaven.width) {
+                    i = j + 1;
+                } else {
+                    k = j;
+                }
+                j = Math.floor((k + i) / 2);
+            }
+            if (ravens[j].width < newRaven.width) {
+                ravens.splice(j + 1, 0, newRaven);
+            } else {
+                ravens.splice(j, 0, newRaven);
+            }
+        }
         lastTime = timestamp;
     }
 
