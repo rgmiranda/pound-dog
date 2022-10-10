@@ -26,7 +26,7 @@ window.addEventListener('load', function() {
         }
     }
 
-    class Player {
+    class DogSprite {
 
         sprites = {
             stand: {
@@ -36,23 +36,92 @@ window.addEventListener('load', function() {
             run: {
                 pos: 3,
                 count: 9
-            }
+            },
+            jump: {
+                pos: 1,
+                count: 7
+            },
+            land: {
+                pos: 2,
+                count: 7
+            },
+            duck: {
+                pos: 7,
+                count: 7
+            },
+            roll: {
+                pos: 6,
+                count: 7
+            },
+            duck: {
+                pos: 5,
+                count: 5
+            },
         };
 
+        constructor(proportion) {
+            this.frameX = 0;
+            this.frameY = 0;
+            this.setAction('stand');
+            this.image = new Image();
+            this.image.src = 'dog.png';
+            this.frameWidth = 575;
+            this.frameHeight = 523;
+            this.width = this.frameWidth * proportion;
+            this.height = this.frameHeight * proportion;
+            this.frameInterval = 50;
+            this.frameLastUpdate = 0;
+        }
+
+        /**
+         * 
+         * @param { string } action 
+         */
+        setAction(action) {
+            if (!this.sprites[action]) {
+                return;
+            }
+            this.frameCount = this.sprites[action].count;
+            this.frameY = this.sprites[action].pos;
+            this.frameX = this.frameX % this.frameCount;
+        }
+
+        /**
+         * 
+         * @param { number } timestamp 
+         */
+        update(timestamp) {
+            const deltaTime = timestamp - this.frameLastUpdate;
+            if (deltaTime > this.frameInterval) {
+                this.frameX = (this.frameX + 1) % this.frameCount;
+                this.frameLastUpdate = timestamp;
+            }
+        }
+
+        /**
+         * 
+         * @param { number } x 
+         * @param { number } y 
+         * @param { CanvasRenderingContext2D } ctx 
+         */
+        draw(x, y, ctx) {
+            const sx = this.frameX * this.frameWidth,
+                sy = this.frameY * this.frameHeight,
+                sw = this.frameWidth,
+                sh = this.frameHeight,
+                dw = this.width,
+                dh = this.height;
+            ctx.drawImage(this.image, sx, sy, sw, sh, x, y, dw, dh);
+        }
+    }
+
+    class Player {
         constructor (gameWidth, gameHeight) {
             this.gameHeight = gameHeight;
             this.gameWidth = gameWidth;
-            this.spritFrameInterval = 50;
-            this.spriteFrameLastUpdate = 0;
-            this.spriteX = 0;
-            this.spriteY = 3;
-            this.spriteWidth = 575;
-            this.spriteHeight = 523;
-            this.spriteCount = 8;
-            this.image = new Image();
-            this.image.src = 'dog.png';
-            this.width = this.spriteWidth * 0.3;
-            this.height = this.spriteHeight * 0.3;
+            this.sprite = new DogSprite(0.3);
+            this.width = this.sprite.width;
+            this.height = this.sprite.height;
             this.x = (gameWidth + this.width) * 0.5;
             this.y = gameHeight - this.height;
 
@@ -63,43 +132,29 @@ window.addEventListener('load', function() {
 
         /**
          * 
-         * @param { CanvasRenderingContext2D } ctx 
-         */
-        draw(ctx) {
-            ctx.fillStyle = 'blue';
-            ctx.fillRect(this.x, this.y, this.width, this.height);
-        }
-
-        /**
-         * 
          * @param { number } timestamp 
          * @param { InputHandler } input 
          */
         update(timestamp, input) {
-            const deltaTime = timestamp - this.spriteFrameLastUpdate;
-            if (deltaTime > this.spritFrameInterval) {
-                this.spriteX = (this.spriteX + 1) % this.spriteCount;
-                this.spriteFrameLastUpdate = timestamp;
-            }
 
-            if (input.keys.indexOf('ArrowRight') > -1) {
+            this.sprite.update(timestamp);
+
+            if (input.keys.indexOf('ArrowDown') > -1) {
+                this.speedX = 0;
+                this.sprite.setAction('duck');
+            } else if (input.keys.indexOf('ArrowRight') > -1) {
                 this.speedX = 5;
-                this.spriteY = 3;
-                this.spriteCount = 8;
+                this.sprite.setAction('run');
             } else if (input.keys.indexOf('ArrowLeft') > -1) {
                 this.speedX = -5;
-                this.spriteY = 3;
-                this.spriteCount = 8;
+                this.sprite.setAction('run');
             } else {
                 this.speedX = 0;
-                this.spriteY = 0;
-                this.spriteCount = 7;
+                this.sprite.setAction('stand');
             }
 
             if ((input.keys.indexOf('ArrowUp') > -1) && this.onGround()) {
                 this.speedY += -20;
-                this.spriteY = 3;
-                this.spriteCount = 8;
             }
 
             this.x += this.speedX;
@@ -112,9 +167,14 @@ window.addEventListener('load', function() {
             if (this.y > this.gameHeight - this.height) {
                 this.y = this.gameHeight - this.height;
             }
+
             if (!this.onGround()) {
                 this.speedY += this.weight;
-                this.spriteY =
+                if (this.speedY < 0) {
+                    this.sprite.setAction('jump');
+                } else {
+                    this.sprite.setAction('land');
+                }
             } else {
                 this.speedY = 0;
             }
@@ -126,15 +186,7 @@ window.addEventListener('load', function() {
          * @param { CanvasRenderingContext2D } ctx 
          */
         draw(ctx) {
-            const sx = this.spriteX * this.spriteWidth,
-                sy = this.spriteY * this.spriteHeight,
-                sw = this.spriteWidth,
-                sh = this.spriteHeight,
-                dx = this.x,
-                dy = this.y,
-                dw = this.width,
-                dh = this.height;
-            ctx.drawImage(this.image, sx, sy, sw, sh, dx, dy, dw, dh);
+            this.sprite.draw(this.x, this.y, ctx);
         }
 
         onGround() {
@@ -194,7 +246,7 @@ window.addEventListener('load', function() {
         },
     ];
     
-    const layers = layersMeta.map( (item, idx) => new Background(item.img, item.w, Math.floor((gameSpeed * (idx + 1)) / layersMeta.length)) );
+    //const layers = layersMeta.map( (item, idx) => new Background(item.img, item.w, Math.floor((gameSpeed * (idx + 1)) / layersMeta.length)) );
 
     function handleEnemies() {
 
