@@ -4,6 +4,8 @@ window.addEventListener('load', function() {
     const cvWidth = (canvas.width = 800);
     const cvHeight = (canvas.height = 600);
 
+    const bgSpeed = 6;
+
     /** @type { CanvasRenderingContext2D } */
     const ctx = canvas.getContext('2d');
 
@@ -23,35 +25,6 @@ window.addEventListener('load', function() {
                 }
             });
 
-        }
-    }
-
-    class DogSprite {
-
-        constructor(proportion) {
-            
-        }
-
-        /**
-         * 
-         * @param { number } timestamp 
-         */
-        update(timestamp) {
-            const deltaTime = timestamp - this.frameLastUpdate;
-            if (deltaTime > this.frameInterval) {
-                this.frameX = (this.frameX + 1) % this.frameCount;
-                this.frameLastUpdate = timestamp;
-            }
-        }
-
-        /**
-         * 
-         * @param { number } x 
-         * @param { number } y 
-         * @param { CanvasRenderingContext2D } ctx 
-         */
-        draw(x, y, ctx) {
-            
         }
     }
 
@@ -109,9 +82,9 @@ window.addEventListener('load', function() {
 
             this.speedX = 0;
             this.speedY = 0;
-            this.weight = 15;
+            this.weight = 2;
 
-            this.setAction('stand');
+            this.setAction('run');
         }
 
         /**
@@ -136,27 +109,22 @@ window.addEventListener('load', function() {
 
             if (this.frameTimer < this.frameInterval) {
                 this.frameTimer += deltaTime;
-                return;
+            } else {
+                this.frameTimer = 0;
+                this.sprite.frameX = (this.sprite.frameX + 1) % this.sprite.frameCount;
             }
-            this.frameTimer = 0;
-            this.sprite.frameX = (this.sprite.frameX + 1) % this.sprite.frameCount;
 
-            if (input.keys.indexOf('ArrowDown') > -1) {
-                this.speedX = 0;
-                this.setAction('duck');
-            } else if (input.keys.indexOf('ArrowRight') > -1) {
-                this.speedX = 15;
-                this.setAction('run');
+            if (input.keys.indexOf('ArrowRight') > -1) {
+                this.speedX = 4;
             } else if (input.keys.indexOf('ArrowLeft') > -1) {
-                this.speedX = -15;
-                this.setAction('run');
+                this.speedX = -4;
             } else {
                 this.speedX = 0;
-                this.setAction('stand');
             }
+            this.setAction('run');
 
             if ((input.keys.indexOf('ArrowUp') > -1) && this.onGround()) {
-                this.speedY += -80;
+                this.speedY += -35;
             }
 
             this.x += this.speedX;
@@ -188,6 +156,12 @@ window.addEventListener('load', function() {
          * @param { CanvasRenderingContext2D } ctx 
          */
         draw(ctx) {
+            ctx.beginPath();
+            ctx.strokeStyle = '#999999';
+            ctx.arc(this.x + this.width * 0.5, this.y + this.height * 0.5, this.height * 0.5, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.stroke();
+
             const sx = this.sprite.frameX * this.sprite.width,
                 sy = this.sprite.frameY * this.sprite.height,
                 sw = this.sprite.width,
@@ -219,7 +193,7 @@ window.addEventListener('load', function() {
             this.x = gameWidth;
             this.y = gameHeight - this.height;
 
-            this.speedX = Math.random() * 5 + 5;
+            this.speedX = Math.random() * 2 + 2;
             this.frameUpdateInterval = 1000 / (Math.random() * 10 + 20);
             this.frameTimer = 0;
             this.frameX = 0;
@@ -231,10 +205,10 @@ window.addEventListener('load', function() {
          * @param { number } deltaTime 
          */
         update(deltaTime) {
+            this.x -= this.speedX;
             if (this.frameTimer > this.frameUpdateInterval) {
                 this.frameTimer = 0;
                 this.frameX = (this.frameX + 1) % this.sprite.frames;
-                this.x -= this.speedX;
                 if (this.x + this.width < 0) {
                     this.active = false;
                 }
@@ -248,6 +222,12 @@ window.addEventListener('load', function() {
          * @param { CanvasRenderingContext2D } ctx 
          */
         draw(ctx) {
+            ctx.beginPath();
+            ctx.strokeStyle = '#999999';
+            ctx.arc(this.x + this.width * 0.4, this.y + this.height * 0.5, this.height * 0.5, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.stroke();
+
             const sx = this.frameX * this.sprite.width,
                 sy = 0,
                 sw = this.sprite.width,
@@ -267,13 +247,17 @@ window.addEventListener('load', function() {
             this.speed = speed;
         }
     
-        move() {
+        update() {
             this.position -= this.speed;
             if (this.position < -this.width) {
                 this.position = this.position + this.width;
             }
         }
     
+        /**
+         * 
+         * @param { CanvasRenderingContext2D } ctx 
+         */
         draw(ctx) {
             ctx.drawImage(this.image, this.position, 0);
             if (this.position < -this.width + cvWidth) {
@@ -284,39 +268,22 @@ window.addEventListener('load', function() {
     
     const layersMeta = [
         {
-            img: './assets/bgl/layer-1.png',
-            h: 720,
-            w: 2400
-        },
-        {
-            img: './assets/bgl/layer-2.png',
-            h: 720,
-            w: 2400
-        },
-        {
-            img: './assets/bgl/layer-3.png',
-            h: 720,
-            w: 2400
-        },
-        {
-            img: './assets/bgl/layer-4.png',
-            h: 720,
-            w: 2400
-        },
-        {
-            img: './assets/bgl/layer-5.png',
+            img: './bg/single.png',
             h: 720,
             w: 2400
         },
     ];
     
-    //const layers = layersMeta.map( (item, idx) => new Background(item.img, item.w, Math.floor((gameSpeed * (idx + 1)) / layersMeta.length)) );
+    /**
+     * @type { Background[] }
+     */
+    const layers = layersMeta.map( (item, idx) => new Background(item.img, item.w, Math.floor((bgSpeed * (idx + 1)) / layersMeta.length)) );
 
     class EnemiesHandler {
         constructor(gameWidth, gameHeight) {
             this.enemies = [];
             this.enemyTypes = [Worm];
-            this.enemyInterval = 1000;
+            this.enemyInterval = 2000;
             this.enemyTimer = 0;
             this.gameWidth = gameWidth;
             this.gameHeight = gameHeight;
@@ -362,6 +329,10 @@ window.addEventListener('load', function() {
         const deltaTime = timestamp - previousTimestamp;
         previousTimestamp = timestamp;
         ctx.clearRect(0, 0, cvWidth, cvHeight);
+        layers.forEach(layer => {
+            layer.update();
+            layer.draw(ctx);
+        })
         player.update(deltaTime, input);
         player.draw(ctx);
         enemyHandler.handle(deltaTime, ctx);
