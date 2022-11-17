@@ -4,6 +4,8 @@ window.addEventListener('load', function() {
     const cvWidth = (canvas.width = 800);
     const cvHeight = (canvas.height = 600);
 
+    const bgSpeed = 6;
+
     /** @type { CanvasRenderingContext2D } */
     const ctx = canvas.getContext('2d');
 
@@ -26,7 +28,7 @@ window.addEventListener('load', function() {
         }
     }
 
-    class DogSprite {
+    class Player {
 
         sprites = {
             stand: {
@@ -59,18 +61,30 @@ window.addEventListener('load', function() {
             },
         };
 
-        constructor(proportion) {
-            this.frameX = 0;
-            this.frameY = 0;
-            this.setAction('stand');
-            this.image = new Image();
-            this.image.src = 'dog.png';
-            this.frameWidth = 575;
-            this.frameHeight = 523;
-            this.width = this.frameWidth * proportion;
-            this.height = this.frameHeight * proportion;
-            this.frameInterval = 50;
-            this.frameLastUpdate = 0;
+        constructor (gameWidth, gameHeight) {
+            this.gameHeight = gameHeight;
+            this.gameWidth = gameWidth;
+            this.sprite = {
+                frameX: 0,
+                frameY: 0,
+                frameCount: 0,
+                image: new Image(),
+                width: 575,
+                height: 523,
+            };
+            this.frameInterval = 1000 / 30;
+            this.frameTimer = 0;
+            this.sprite.image.src = 'dog.png';
+            this.width = this.sprite.width * 0.3;
+            this.height = this.sprite.height * 0.3;
+            this.x = (gameWidth + this.width) * 0.5;
+            this.y = gameHeight - this.height;
+
+            this.speedX = 0;
+            this.speedY = 0;
+            this.weight = 2;
+
+            this.setAction('run');
         }
 
         /**
@@ -81,80 +95,36 @@ window.addEventListener('load', function() {
             if (!this.sprites[action]) {
                 return;
             }
-            this.frameCount = this.sprites[action].count;
-            this.frameY = this.sprites[action].pos;
-            this.frameX = this.frameX % this.frameCount;
+            this.sprite.frameCount = this.sprites[action].count;
+            this.sprite.frameY = this.sprites[action].pos;
+            this.sprite.frameX = this.sprite.frameX % this.sprite.frameCount;
         }
 
         /**
          * 
-         * @param { number } timestamp 
-         */
-        update(timestamp) {
-            const deltaTime = timestamp - this.frameLastUpdate;
-            if (deltaTime > this.frameInterval) {
-                this.frameX = (this.frameX + 1) % this.frameCount;
-                this.frameLastUpdate = timestamp;
-            }
-        }
-
-        /**
-         * 
-         * @param { number } x 
-         * @param { number } y 
-         * @param { CanvasRenderingContext2D } ctx 
-         */
-        draw(x, y, ctx) {
-            const sx = this.frameX * this.frameWidth,
-                sy = this.frameY * this.frameHeight,
-                sw = this.frameWidth,
-                sh = this.frameHeight,
-                dw = this.width,
-                dh = this.height;
-            ctx.drawImage(this.image, sx, sy, sw, sh, x, y, dw, dh);
-        }
-    }
-
-    class Player {
-        constructor (gameWidth, gameHeight) {
-            this.gameHeight = gameHeight;
-            this.gameWidth = gameWidth;
-            this.sprite = new DogSprite(0.3);
-            this.width = this.sprite.width;
-            this.height = this.sprite.height;
-            this.x = (gameWidth + this.width) * 0.5;
-            this.y = gameHeight - this.height;
-
-            this.speedX = 0;
-            this.speedY = 0;
-            this.weight = 1;
-        }
-
-        /**
-         * 
-         * @param { number } timestamp 
+         * @param { number } deltaTime 
          * @param { InputHandler } input 
          */
-        update(timestamp, input) {
+        update(deltaTime, input) {
 
-            this.sprite.update(timestamp);
-
-            if (input.keys.indexOf('ArrowDown') > -1) {
-                this.speedX = 0;
-                this.sprite.setAction('duck');
-            } else if (input.keys.indexOf('ArrowRight') > -1) {
-                this.speedX = 5;
-                this.sprite.setAction('run');
-            } else if (input.keys.indexOf('ArrowLeft') > -1) {
-                this.speedX = -5;
-                this.sprite.setAction('run');
+            if (this.frameTimer < this.frameInterval) {
+                this.frameTimer += deltaTime;
             } else {
-                this.speedX = 0;
-                this.sprite.setAction('stand');
+                this.frameTimer = 0;
+                this.sprite.frameX = (this.sprite.frameX + 1) % this.sprite.frameCount;
             }
 
+            if (input.keys.indexOf('ArrowRight') > -1) {
+                this.speedX = 4;
+            } else if (input.keys.indexOf('ArrowLeft') > -1) {
+                this.speedX = -4;
+            } else {
+                this.speedX = 0;
+            }
+            this.setAction('run');
+
             if ((input.keys.indexOf('ArrowUp') > -1) && this.onGround()) {
-                this.speedY += -20;
+                this.speedY += -35;
             }
 
             this.x += this.speedX;
@@ -171,9 +141,9 @@ window.addEventListener('load', function() {
             if (!this.onGround()) {
                 this.speedY += this.weight;
                 if (this.speedY < 0) {
-                    this.sprite.setAction('jump');
+                    this.setAction('jump');
                 } else {
-                    this.sprite.setAction('land');
+                    this.setAction('land');
                 }
             } else {
                 this.speedY = 0;
@@ -186,11 +156,85 @@ window.addEventListener('load', function() {
          * @param { CanvasRenderingContext2D } ctx 
          */
         draw(ctx) {
-            this.sprite.draw(this.x, this.y, ctx);
+            ctx.beginPath();
+            ctx.strokeStyle = '#999999';
+            ctx.arc(this.x + this.width * 0.5, this.y + this.height * 0.5, this.height * 0.5, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.stroke();
+
+            const sx = this.sprite.frameX * this.sprite.width,
+                sy = this.sprite.frameY * this.sprite.height,
+                sw = this.sprite.width,
+                sh = this.sprite.height,
+                dw = this.width,
+                dh = this.height;
+            ctx.drawImage(this.sprite.image, sx, sy, sw, sh, this.x, this.y, dw, dh);
         }
 
         onGround() {
             return this.y >= this.gameHeight - this.height;
+        }
+    }
+
+    class Worm {
+        constructor(gameWidth, gameHeight) {
+            const proportion = Math.random() * 0.3 + 0.2 
+            this.gameHeight = gameHeight;
+            this.gameWidth = gameWidth;
+            this.sprite = {
+                image: new Image(),
+                width: 229,
+                height: 171,
+                frames: 6
+            }
+            this.sprite.image.src = 'enemies/worm.png';
+            this.width = this.sprite.width * proportion;
+            this.height = this.sprite.height * proportion;
+            this.x = gameWidth;
+            this.y = gameHeight - this.height;
+
+            this.speedX = Math.random() * 2 + 2;
+            this.frameUpdateInterval = 1000 / (Math.random() * 10 + 20);
+            this.frameTimer = 0;
+            this.frameX = 0;
+            this.active = true;
+        }
+
+        /**
+         * 
+         * @param { number } deltaTime 
+         */
+        update(deltaTime) {
+            this.x -= this.speedX;
+            if (this.frameTimer > this.frameUpdateInterval) {
+                this.frameTimer = 0;
+                this.frameX = (this.frameX + 1) % this.sprite.frames;
+                if (this.x + this.width < 0) {
+                    this.active = false;
+                }
+            } else {
+                this.frameTimer += deltaTime;
+            }
+        }
+
+        /**
+         * 
+         * @param { CanvasRenderingContext2D } ctx 
+         */
+        draw(ctx) {
+            ctx.beginPath();
+            ctx.strokeStyle = '#999999';
+            ctx.arc(this.x + this.width * 0.4, this.y + this.height * 0.5, this.height * 0.5, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.stroke();
+
+            const sx = this.frameX * this.sprite.width,
+                sy = 0,
+                sw = this.sprite.width,
+                sh = this.sprite.height,
+                dw = this.width,
+                dh = this.height;
+            ctx.drawImage(this.sprite.image, sx, sy, sw, sh, this.x, this.y, dw, dh);
         }
     }
 
@@ -203,16 +247,20 @@ window.addEventListener('load', function() {
             this.speed = speed;
         }
     
-        move() {
+        update() {
             this.position -= this.speed;
             if (this.position < -this.width) {
                 this.position = this.position + this.width;
             }
         }
     
+        /**
+         * 
+         * @param { CanvasRenderingContext2D } ctx 
+         */
         draw(ctx) {
             ctx.drawImage(this.image, this.position, 0);
-            if (this.position < -this.width + CV_WIDTH) {
+            if (this.position < -this.width + cvWidth) {
                 ctx.drawImage(this.image, this.position + this.width, 0);
             } 
         }
@@ -220,36 +268,52 @@ window.addEventListener('load', function() {
     
     const layersMeta = [
         {
-            img: './assets/bgl/layer-1.png',
-            h: 720,
-            w: 2400
-        },
-        {
-            img: './assets/bgl/layer-2.png',
-            h: 720,
-            w: 2400
-        },
-        {
-            img: './assets/bgl/layer-3.png',
-            h: 720,
-            w: 2400
-        },
-        {
-            img: './assets/bgl/layer-4.png',
-            h: 720,
-            w: 2400
-        },
-        {
-            img: './assets/bgl/layer-5.png',
+            img: './bg/single.png',
             h: 720,
             w: 2400
         },
     ];
     
-    //const layers = layersMeta.map( (item, idx) => new Background(item.img, item.w, Math.floor((gameSpeed * (idx + 1)) / layersMeta.length)) );
+    /**
+     * @type { Background[] }
+     */
+    const layers = layersMeta.map( (item, idx) => new Background(item.img, item.w, Math.floor((bgSpeed * (idx + 1)) / layersMeta.length)) );
 
-    function handleEnemies() {
+    class EnemiesHandler {
+        constructor(gameWidth, gameHeight) {
+            this.enemies = [];
+            this.enemyTypes = [Worm];
+            this.enemyInterval = 2000;
+            this.enemyTimer = 0;
+            this.gameWidth = gameWidth;
+            this.gameHeight = gameHeight;
+        }
 
+        /**
+         * 
+         * @param { number } deltaTime 
+         */
+        handle(deltaTime, ctx) {
+
+            if ( this.enemyTimer > this.enemyInterval ) {
+                const newEnemyType = this.enemyTypes[Math.floor(Math.random() * this.enemyTypes.length)];
+                this.enemies.push(new newEnemyType(this.gameWidth, this.gameHeight));
+                this.lastSpawnTime = deltaTime;
+                this.enemyTimer = 0;
+            } else {
+                this.enemyTimer += deltaTime;
+            }
+            let i = 0;
+            while (i < this.enemies.length) {
+                this.enemies[i].update(deltaTime);
+                if (!this.enemies[i].active) {
+                    this.enemies.splice(i, 1);
+                    continue;
+                }
+                this.enemies[i].draw(ctx);
+                i++;
+            }
+        }
     }
 
     function displayStatusText() {
@@ -258,11 +322,20 @@ window.addEventListener('load', function() {
 
     const input = new InputHandler();
     const player = new Player(cvWidth, cvHeight);
+    const enemyHandler = new EnemiesHandler(cvWidth, cvHeight);
+    let previousTimestamp = 0;
 
     function animate(timestamp) {
+        const deltaTime = timestamp - previousTimestamp;
+        previousTimestamp = timestamp;
         ctx.clearRect(0, 0, cvWidth, cvHeight);
-        player.update(timestamp, input);
+        layers.forEach(layer => {
+            layer.update();
+            layer.draw(ctx);
+        })
+        player.update(deltaTime, input);
         player.draw(ctx);
+        enemyHandler.handle(deltaTime, ctx);
         requestAnimationFrame(animate);
     }
     animate(0);
