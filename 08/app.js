@@ -1,3 +1,4 @@
+import { InputHandler } from "./input.js";
 import { Player } from "./player.js";
 import { StantingState } from "./state.js";
 
@@ -15,7 +16,8 @@ window.addEventListener('load', () => {
   canvas.height = window.innerHeight;
 
   const player = new Player(canvas.width, canvas.height);
-  player.state = new StantingState(player);
+  const inputHandler = new InputHandler();
+  player.state = new StantingState(player, inputHandler);
 
   let lastTime = 0;
 

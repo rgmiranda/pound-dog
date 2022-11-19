@@ -18,6 +18,8 @@ export class Player {
   #height;
   /** @type { Vector } */
   #position;
+  /** @type { number } */
+  #weight;
 
   /**
    * 
@@ -32,6 +34,7 @@ export class Player {
     this.#sprite = new Sprite(document.getElementById('dog-sprite'), 200, 181.83);
     this.#width = this.#sprite.width * p;
     this.#height = this.#sprite.height * p;
+    this.#weight = 2;
     this.#position = new Vector((gameWidth - this.#width) * 0.5, this.#gameHeight - this.#height);
   }
 
@@ -93,6 +96,10 @@ export class Player {
 
   get height() {
     return this.#height;
+  }
+
+  get weight() {
+    return this.#weight;
   }
 
   get position() {

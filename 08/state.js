@@ -1,17 +1,26 @@
+import { InputHandler } from "./input.js";
 import { Player } from "./player.js";
+import { Vector } from "./vector";
 
 export class State {
 
   /**
    * 
    * @param { Player } player 
+   * @param { InputHandler } inputHandler 
    */
-  constructor (player) {
+  constructor (player, inputHandler) {
     if (!player instanceof Player) {
       throw new TypeError('Player expected');
     }
+    if (!inputHandler instanceof InputHandler) {
+      throw new TypeError('InputHandler expected');
+    }
     /** @type { Player } */
     this.player = player;
+
+    /** @type { InputHandler } */
+    this.inputHandler = inputHandler;
 
     /** @type { number } */
     this.spriteX = 0;
@@ -69,5 +78,26 @@ export class StantingState extends State {
     this.spriteY = 0;
   }
 
+}
+
+export class JumpingRightState extends State {
+
+  constructor(player, ) {
+    super(player);
+    this.animationInterval = 50;
+    this.spriteFrameCount = 7;
+    this.spriteY = 2;
+    this.gravity = new Vector(0, this.player.weight);
+    this.direction = new Vector(0, 0);
+  }
+
+  /**
+   * 
+   * @param { number } deltaTime 
+   */
+  update(deltaTime) {
+    this.player.position.
+    super.update(deltaTime);
+  }
 }
 
